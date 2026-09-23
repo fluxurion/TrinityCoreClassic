@@ -32,11 +32,15 @@ static DWORD OpenDataStream(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
     TCHAR szPlainName[0x80];
     DWORD dwErrCode;
 
+    fprintf(stderr, "[ods] flags=0x%x downloadIf=%d\n", pCKeyEntry->Flags, (int)bDownloadFileIf);
+
     // If the file is available locally, we rely on data files.
     // If not, we download the file and open the stream
     if(pCKeyEntry->Flags & CASC_CE_FILE_IS_LOCAL)
     {
         DWORD dwArchiveIndex = pFileSpan->ArchiveIndex;
+
+        fprintf(stderr, "[ods] local: archive=%u offs=0x%x encsize=%u\n", dwArchiveIndex, (unsigned)pFileSpan->ArchiveOffs, (unsigned)pCKeyEntry->EncodedSize);
 
         // Lock the storage to make the operation thread-safe
         CascLock(hs->StorageLock);
@@ -467,7 +471,20 @@ static DWORD LoadSpanFrames(TCascFile * hf, PCASC_FILE_SPAN pFileSpan, PCASC_CKE
     }
 
     // Make sure we have header area loaded
-    return LoadEncodedHeaderAndSpanFrames(pFileSpan, pCKeyEntry);
+    dwErrCode = LoadEncodedHeaderAndSpanFrames(pFileSpan, pCKeyEntry);
+
+    // On partially downloaded (sparse) storages, an index file may claim that
+    // a file is local while its archive bytes were never actually downloaded.
+    // In that case the span parse fails; retry by downloading the file instead.
+    if(dwErrCode != ERROR_SUCCESS && hf->bDownloadFileIf && (pCKeyEntry->Flags & CASC_CE_FILE_IS_LOCAL))
+    {
+        pCKeyEntry->Flags &= ~CASC_CE_FILE_IS_LOCAL;
+        pFileSpan->pStream = NULL;      // Shared storage stream, do not close it
+        CASC_FREE(pFileSpan->pFrames);
+        dwErrCode = LoadSpanFrames(hf, pFileSpan, pCKeyEntry);
+    }
+
+    return dwErrCode;
 }
 
 // Loads all file spans to memory
@@ -519,11 +536,17 @@ static DWORD LoadFileSpanFrames(TCascFile * hf)
 static DWORD EnsureFileSpanFramesLoaded(TCascFile * hf)
 {
     DWORD dwErrCode;
+    PCASC_CKEY_ENTRY dbg = hf->pCKeyEntry;
+    fprintf(stderr, "[ensure] spans=%u content=%llx encoded=%llx flags=0x%x ekey=%02x%02x%02x%02x frames=%p\n",
+        hf->SpanCount, (unsigned long long)hf->ContentSize, (unsigned long long)hf->EncodedSize,
+        dbg ? dbg->Flags : 0, dbg ? dbg->EKey[0] : 0, dbg ? dbg->EKey[1] : 0, dbg ? dbg->EKey[2] : 0, dbg ? dbg->EKey[3] : 0,
+        hf->pFileSpan ? (void*)hf->pFileSpan->pFrames : (void*)-1);
 
     if(hf->ContentSize == CASC_INVALID_SIZE64 || hf->pFileSpan->pFrames == NULL)
     {
         // Load all frames of all file spans
         dwErrCode = LoadFileSpanFrames(hf);
+        fprintf(stderr, "[ensure] LoadFileSpanFrames -> %u\n", dwErrCode);
         if(dwErrCode != ERROR_SUCCESS)
             return dwErrCode;
 

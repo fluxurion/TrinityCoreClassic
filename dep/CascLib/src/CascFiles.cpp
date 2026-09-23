@@ -63,7 +63,10 @@ static LPCTSTR DataDirs[] =
     NULL,
 };
 
-static const LPCTSTR szDefaultCDN = _T("ribbit://us.version.battle.net/v1/products");
+// Dead as of September 2025
+// static const LPCTSTR szDefaultCDN = _T("ribbit://us.version.battle.net/v1/products");
+
+static const LPCTSTR szDefaultCDN = _T("http://us.patch.battle.net:1119");
 static const ULONGLONG ValueOne64 = 1;
 
 //-----------------------------------------------------------------------------
@@ -1295,6 +1298,7 @@ DWORD FetchCascFile(
 
             // Attempt to download the file
             dwErrCode = HttpDownloadFile(RemotePath, LocalPath, NULL, 0, 0);
+            fprintf(stderr, "[fetch] %s -> %s err=%u\n", (const char*)RemotePath, (const char*)LocalPath, dwErrCode);
 
             // Stop on low memory condition, as it will most likely
             // end up with low memory on next download

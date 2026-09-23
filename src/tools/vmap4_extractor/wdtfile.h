@@ -70,7 +70,7 @@ namespace WDT
 class WDTFile
 {
 public:
-    WDTFile(std::string fileName, std::string mapName, bool cache);
+    WDTFile(uint32 fileDataId, std::string const& description, std::string mapName, bool cache);
     ~WDTFile();
     bool init(uint32 mapId);
 

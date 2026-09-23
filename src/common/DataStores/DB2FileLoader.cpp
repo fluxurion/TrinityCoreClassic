@@ -746,7 +746,20 @@ unsigned char const* DB2FileLoaderRegularImpl::GetRawRecordData(uint32 recordNum
 uint32 DB2FileLoaderRegularImpl::RecordGetId(uint8 const* record, uint32 recordIndex) const
 {
     if (_loadInfo->Meta->HasIndexFieldInData())
-        return RecordGetVarInt<uint32>(record, _loadInfo->Meta->GetIndexField(), 0);
+    {
+        uint32 indexField = _loadInfo->Meta->GetIndexField();
+        switch (_loadInfo->Meta->Fields[indexField].Type)
+        {
+            case FT_INT:
+                return RecordGetVarInt<uint32>(record, indexField, 0);
+            case FT_BYTE:
+                return RecordGetVarInt<uint8>(record, indexField, 0);
+            case FT_SHORT:
+                return RecordGetVarInt<uint16>(record, indexField, 0);
+            default:
+                ABORT_MSG("Unhandled ID type %u in %s", uint32(_loadInfo->Meta->Fields[indexField].Type), _fileName);
+        }
+    }
 
     return _idTable[recordIndex];
 }
@@ -1722,6 +1735,7 @@ void DB2FileLoader::LoadHeaders(DB2FileSource* source, DB2FileLoadInfo const* lo
         throw DB2FileLoadException("Failed to read header");
 
     EndianConvert(_header.Signature);
+    EndianConvert(_header.Version);
     EndianConvert(_header.RecordCount);
     EndianConvert(_header.FieldCount);
     EndianConvert(_header.RecordSize);
@@ -1742,9 +1756,13 @@ void DB2FileLoader::LoadHeaders(DB2FileSource* source, DB2FileLoadInfo const* lo
     EndianConvert(_header.SectionCount);
 
 
-    if (_header.Signature != 0x33434457)                        //'WDC3'
-        throw DB2FileLoadException(Trinity::StringFormat("Incorrect file signature in {}, expected 'WDC3', got {}{}{}{}", source->GetFileName(),
+    if (_header.Signature != 0x35434457)                        //'WDC5'
+        throw DB2FileLoadException(Trinity::StringFormat("Incorrect file signature in {}, expected 'WDC5', got {}{}{}{}", source->GetFileName(),
             char(_header.Signature & 0xFF), char((_header.Signature >> 8) & 0xFF), char((_header.Signature >> 16) & 0xFF), char((_header.Signature >> 24) & 0xFF)));
+
+    if (_header.Version != 5)
+        throw DB2FileLoadException(Trinity::StringFormat("Incorrect version in {}, expected 5, got {} (possibly wrong client version)",
+            source->GetFileName(), _header.Version));
 
     if (loadInfo && _header.LayoutHash != loadInfo->Meta->LayoutHash)
         throw DB2FileLoadException(Trinity::StringFormat("Incorrect layout hash in {}, expected 0x{:08X}, got 0x{:08X} (possibly wrong client version)",

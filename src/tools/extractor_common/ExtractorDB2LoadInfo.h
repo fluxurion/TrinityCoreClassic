@@ -35,15 +35,17 @@ struct CinematicCameraLoadInfo
             { false, FT_INT, "SoundID" },
             { false, FT_FLOAT, "OriginFacing" },
             { false, FT_INT, "FileDataID" },
+            { false, FT_INT, "ConversationID" },
         };
-        static DB2MetaField const fields[4] =
+        static DB2MetaField const fields[5] =
         {
             { FT_FLOAT, 3, true },
             { FT_INT, 1, false },
             { FT_FLOAT, 1, true },
             { FT_INT, 1, false },
+            { FT_INT, 1, false },
         };
-        static DB2Meta meta(1294214, -1, 4, 4, 0x7BA7D9AC, fields, -1);
+        static DB2Meta meta(1294214, -1, 5, 5, 0x8BFD752B, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }
@@ -56,7 +58,6 @@ struct GameobjectDisplayInfoLoadInfo
         static DB2FieldMeta const loadedFields[] =
         {
             { false, FT_INT, "ID" },
-            { false, FT_STRING_NOT_LOCALIZED, "ModelName" },
             { false, FT_FLOAT, "GeoBoxMinX" },
             { false, FT_FLOAT, "GeoBoxMinY" },
             { false, FT_FLOAT, "GeoBoxMinZ" },
@@ -67,17 +68,24 @@ struct GameobjectDisplayInfoLoadInfo
             { true, FT_SHORT, "ObjectEffectPackageID" },
             { false, FT_FLOAT, "OverrideLootEffectScale" },
             { false, FT_FLOAT, "OverrideNameScale" },
+            { true, FT_INT, "AlternateDisplayType" },
+            { true, FT_INT, "ClientCreatureDisplayInfoID" },
+            { true, FT_INT, "ClientItemID" },
+            { false, FT_SHORT, "Field_11_0_0_54210_008" },
         };
-        static DB2MetaField const fields[6] =
+        static DB2MetaField const fields[9] =
         {
-            { FT_STRING_NOT_LOCALIZED, 1, true },
             { FT_FLOAT, 6, true },
             { FT_INT, 1, true },
             { FT_SHORT, 1, true },
             { FT_FLOAT, 1, true },
             { FT_FLOAT, 1, true },
+            { FT_INT, 1, true },
+            { FT_INT, 1, true },
+            { FT_INT, 1, true },
+            { FT_SHORT, 1, false },
         };
-        static DB2Meta meta(1266277, -1, 6, 6, 0x21FD4DC2, fields, -1);
+        static DB2Meta meta(1266277, -1, 9, 9, 0x16D1DD61, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }
@@ -90,15 +98,15 @@ struct LiquidMaterialLoadInfo
         static DB2FieldMeta const loadedFields[] =
         {
             { false, FT_INT, "ID" },
-            { true, FT_BYTE, "Flags" },
+            { true, FT_INT, "Flags" },
             { true, FT_BYTE, "LVF" },
         };
         static DB2MetaField const fields[2] =
         {
-            { FT_BYTE, 1, true },
+            { FT_INT, 1, true },
             { FT_BYTE, 1, true },
         };
-        static DB2Meta meta(1132538, -1, 2, 2, 0xD384A6A0, fields, -1);
+        static DB2Meta meta(1132538, -1, 2, 2, 0x98E5D7AA, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }
@@ -125,7 +133,7 @@ struct LiquidObjectLoadInfo
             { FT_BYTE, 1, false },
             { FT_BYTE, 1, false },
         };
-        static DB2Meta meta(1308058, -1, 5, 5, 0xF09062A1, fields, -1);
+        static DB2Meta meta(1308058, -1, 5, 5, 0xCB0D39E8, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }
@@ -145,7 +153,7 @@ struct LiquidTypeLoadInfo
             { false, FT_STRING_NOT_LOCALIZED, "Texture4" },
             { false, FT_STRING_NOT_LOCALIZED, "Texture5" },
             { false, FT_STRING_NOT_LOCALIZED, "Texture6" },
-            { false, FT_SHORT, "Flags" },
+            { true, FT_INT, "Flags" },
             { false, FT_BYTE, "SoundBank" },
             { false, FT_INT, "SoundID" },
             { false, FT_INT, "SpellID" },
@@ -167,6 +175,7 @@ struct LiquidTypeLoadInfo
             { false, FT_BYTE, "FrameCountTexture6" },
             { true, FT_INT, "Color1" },
             { true, FT_INT, "Color2" },
+            { true, FT_INT, "Color3" },
             { false, FT_FLOAT, "Float1" },
             { false, FT_FLOAT, "Float2" },
             { false, FT_FLOAT, "Float3" },
@@ -185,6 +194,26 @@ struct LiquidTypeLoadInfo
             { false, FT_FLOAT, "Float16" },
             { false, FT_FLOAT, "Float17" },
             { false, FT_FLOAT, "Float18" },
+            { false, FT_FLOAT, "Float19" },
+            { false, FT_FLOAT, "Float20" },
+            { false, FT_FLOAT, "Float21" },
+            { false, FT_FLOAT, "Float22" },
+            { false, FT_FLOAT, "Float23" },
+            { false, FT_FLOAT, "Float24" },
+            { false, FT_FLOAT, "Float25" },
+            { false, FT_FLOAT, "Float26" },
+            { false, FT_FLOAT, "Float27" },
+            { false, FT_FLOAT, "Float28" },
+            { false, FT_FLOAT, "Float29" },
+            { false, FT_FLOAT, "Float30" },
+            { false, FT_FLOAT, "Float31" },
+            { false, FT_FLOAT, "Float32" },
+            { false, FT_FLOAT, "Float33" },
+            { false, FT_FLOAT, "Float34" },
+            { false, FT_FLOAT, "Float35" },
+            { false, FT_FLOAT, "Float36" },
+            { false, FT_FLOAT, "Float37" },
+            { false, FT_FLOAT, "Float38" },
             { false, FT_INT, "Int1" },
             { false, FT_INT, "Int2" },
             { false, FT_INT, "Int3" },
@@ -198,7 +227,7 @@ struct LiquidTypeLoadInfo
         {
             { FT_STRING_NOT_LOCALIZED, 1, true },
             { FT_STRING_NOT_LOCALIZED, 6, true },
-            { FT_SHORT, 1, false },
+            { FT_INT, 1, true },
             { FT_BYTE, 1, false },
             { FT_INT, 1, false },
             { FT_INT, 1, false },
@@ -213,12 +242,12 @@ struct LiquidTypeLoadInfo
             { FT_BYTE, 1, false },
             { FT_INT, 1, true },
             { FT_BYTE, 6, false },
-            { FT_INT, 2, true },
-            { FT_FLOAT, 18, true },
+            { FT_INT, 3, true },
+            { FT_FLOAT, 38, true },
             { FT_INT, 4, false },
             { FT_FLOAT, 4, true },
         };
-        static DB2Meta meta(1371380, -1, 21, 21, 0xD0172A80, fields, -1);
+        static DB2Meta meta(1371380, -1, 21, 21, 0xD1ECEEC9, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }
@@ -237,6 +266,8 @@ struct MapLoadInfo
             { false, FT_STRING, "MapDescription1" },
             { false, FT_STRING, "PvpShortDescription" },
             { false, FT_STRING, "PvpLongDescription" },
+            { false, FT_FLOAT, "CorpseX" },
+            { false, FT_FLOAT, "CorpseY" },
             { false, FT_BYTE, "MapType" },
             { true, FT_BYTE, "InstanceType" },
             { false, FT_BYTE, "ExpansionID" },
@@ -251,10 +282,15 @@ struct MapLoadInfo
             { false, FT_BYTE, "MaxPlayers" },
             { true, FT_SHORT, "WindSettingsID" },
             { true, FT_INT, "ZmpFileDataID" },
+            { true, FT_INT, "WdtFileDataID" },
+            { true, FT_INT, "OceanLiquidTypeID" },
+            { true, FT_INT, "NavigationMaxDistance" },
+            { true, FT_INT, "PreloadFileDataID" },
             { true, FT_INT, "Flags1" },
             { true, FT_INT, "Flags2" },
+            { true, FT_INT, "Flags3" },
         };
-        static DB2MetaField const fields[21] =
+        static DB2MetaField const fields[26] =
         {
             { FT_STRING_NOT_LOCALIZED, 1, true },
             { FT_STRING, 1, true },
@@ -262,6 +298,7 @@ struct MapLoadInfo
             { FT_STRING, 1, true },
             { FT_STRING, 1, true },
             { FT_STRING, 1, true },
+            { FT_FLOAT, 2, true },
             { FT_BYTE, 1, false },
             { FT_BYTE, 1, true },
             { FT_BYTE, 1, false },
@@ -276,9 +313,13 @@ struct MapLoadInfo
             { FT_BYTE, 1, false },
             { FT_SHORT, 1, true },
             { FT_INT, 1, true },
-            { FT_INT, 2, true },
+            { FT_INT, 1, true },
+            { FT_INT, 1, true },
+            { FT_INT, 1, true },
+            { FT_INT, 1, true },
+            { FT_INT, 3, true },
         };
-        static DB2Meta meta(1349477, -1, 21, 21, 0xC08A6797, fields, -1);
+        static DB2Meta meta(1349477, -1, 26, 26, 0xD43AFAC3, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }

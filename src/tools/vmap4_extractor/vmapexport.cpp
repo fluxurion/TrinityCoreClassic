@@ -51,6 +51,7 @@ std::shared_ptr<CASC::Storage> CascStorage;
 struct MapEntry
 {
     uint32 Id = 0;
+    int32 WdtFileDataId = 0;
     int16 ParentMapID = 0;
     std::string Name;
     std::string Directory;
@@ -60,7 +61,7 @@ std::vector<MapEntry> map_ids; // partitioned by parent maps first
 std::unordered_set<uint32> maps_that_are_parents;
 boost::filesystem::path input_path;
 bool preciseVectorData = false;
-char const* CascProduct = "wow_classic_era";
+char const* CascProduct = "wow_classic_beta";
 char const* CascRegion = "eu";
 bool UseRemoteCasc = false;
 uint32 DbcLocale = 0;
@@ -104,8 +105,14 @@ bool OpenCascStorage(int locale)
 {
     try
     {
+        boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
         if (UseRemoteCasc)
         {
+            // Prefer hybrid mode: local install as cache, missing files fetched from CDN on demand
+            CascStorage.reset(CASC::Storage::OpenRemote(storage_dir, WowLocaleToCascLocaleFlags[locale], CascProduct, CascRegion));
+            if (CascStorage)
+                return true;
+
             boost::filesystem::path const casc_cache_dir(boost::filesystem::canonical(input_path) / "CascCache");
             CascStorage.reset(CASC::Storage::OpenRemote(casc_cache_dir, WowLocaleToCascLocaleFlags[locale], CascProduct, CascRegion));
             if (CascStorage)
@@ -114,7 +121,6 @@ bool OpenCascStorage(int locale)
             printf("Unable to open remote casc fallback to local casc\n");
         }
 
-        boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
         CascStorage.reset(CASC::Storage::Open(storage_dir, WowLocaleToCascLocaleFlags[locale], CascProduct));
         if (!CascStorage)
         {
@@ -135,18 +141,21 @@ uint32 GetInstalledLocalesMask()
 {
     try
     {
+        boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
         if (UseRemoteCasc)
         {
-            boost::filesystem::path const casc_cache_dir(boost::filesystem::canonical(input_path) / "CascCache");
+            std::unique_ptr<CASC::Storage> storage(CASC::Storage::OpenRemote(storage_dir, 0, CascProduct, CascRegion));
+            if (storage)
+                return CASC_LOCALE_ALL_WOW;
 
-            std::unique_ptr<CASC::Storage> storage(CASC::Storage::OpenRemote(casc_cache_dir, 0, CascProduct, CascRegion));
+            boost::filesystem::path const casc_cache_dir(boost::filesystem::canonical(input_path) / "CascCache");
+            storage.reset(CASC::Storage::OpenRemote(casc_cache_dir, 0, CascProduct, CascRegion));
             if (storage)
                 return CASC_LOCALE_ALL_WOW;
 
             printf("Unable to open remote casc fallback to local casc\n");
         }
 
-        boost::filesystem::path const storage_dir(boost::filesystem::canonical(input_path) / "Data");
         std::unique_ptr<CASC::Storage> storage(CASC::Storage::Open(storage_dir, 0, CascProduct));
         if (!storage)
             return false;
@@ -275,9 +284,9 @@ void ParsMapFiles()
             if (mapEntryItr == map_ids.end())
                 return nullptr;
 
-            std::string fileName = Trinity::StringFormat(R"(World\Maps\{}\{}.wdt)", mapEntryItr->Directory, mapEntryItr->Directory);
+            std::string description = Trinity::StringFormat("WDT for map {} - {} (FileDataID {})", mapEntryItr->Id, mapEntryItr->Name, mapEntryItr->WdtFileDataId);
             std::string directory = mapEntryItr->Directory;
-            itr = wdts.emplace(std::piecewise_construct, std::forward_as_tuple(mapId), std::forward_as_tuple(std::move(fileName), std::move(directory), maps_that_are_parents.count(mapId) > 0)).first;
+            itr = wdts.emplace(std::piecewise_construct, std::forward_as_tuple(mapId), std::forward_as_tuple(mapEntryItr->WdtFileDataId, std::move(description), std::move(directory), maps_that_are_parents.count(mapId) > 0)).first;
             if (!itr->second.init(mapId))
             {
                 wdts.erase(itr);
@@ -396,7 +405,7 @@ bool processArgv(int argc, char ** argv, const char *versionString)
         printf("   -s  : (default) small size (data size optimization), ~500MB less vmap data.\n");
         printf("   -l  : large size, ~500MB more vmap data. (might contain more details)\n");
         printf("   -d  <path>: Path to the vector data source folder.\n");
-        printf("   -p  <product>: which installed product to open (wow/wowt/wow_beta)\n");
+        printf("   -p  <product>: which installed product to open (wow/wowt/wow_beta/wow_classic_beta)\n");
         printf("   -c  use remote casc\n");
         printf("   -r  set remote casc region - standard: eu\n");
         printf("   -dl dbc locale\n");
@@ -541,6 +550,7 @@ int main(int argc, char ** argv)
 
             MapEntry map;
             map.Id = record.GetId();
+            map.WdtFileDataId = record.GetInt32("WdtFileDataID");
             map.ParentMapID = int16(record.GetUInt16("ParentMapID"));
             map.Name = record.GetString("MapName");
             map.Directory = record.GetString("Directory");
@@ -563,12 +573,15 @@ int main(int argc, char ** argv)
             {
                 MapEntry map;
                 map.Id = copy.NewRowId;
+                map.WdtFileDataId = map_ids[itr->second].WdtFileDataId;
                 map.ParentMapID = map_ids[itr->second].ParentMapID;
                 map.Name = map_ids[itr->second].Name;
                 map.Directory = map_ids[itr->second].Directory;
                 map_ids.push_back(map);
             }
         }
+
+        std::erase_if(map_ids, [](MapEntry const& map) { return !map.WdtFileDataId; });
 
         // force parent maps to be extracted first
         std::stable_partition(map_ids.begin(), map_ids.end(), [](MapEntry const& map) { return maps_that_are_parents.count(map.Id) > 0; });

@@ -153,13 +153,15 @@ static LPTSTR CreateIndexFileName(TCascStorage * hs, DWORD IndexValue, DWORD Ind
 
 static void SaveFileOffsetBitsAndEKeyLength(TCascStorage * hs, BYTE FileOffsetBits, BYTE EKeyLength)
 {
+    // Note: When a local storage is opened in online mode, archive (.index)
+    // indices may use different FileOffsetBits/EKeyLength than the local
+    // (.idx) indices. Keep the first-seen values; LoadArchiveIndexPage
+    // normalizes StorageOffset accordingly.
     if(hs->FileOffsetBits == 0)
         hs->FileOffsetBits = FileOffsetBits;
-    assert(hs->FileOffsetBits == FileOffsetBits);
 
     if(hs->EKeyLength == 0)
         hs->EKeyLength = EKeyLength;
-    assert(hs->EKeyLength == EKeyLength);
 }
 
 // Verifies a guarded block - data availability and checksum match
@@ -659,6 +661,16 @@ static DWORD LoadArchiveIndexPage(TCascStorage * hs, CASC_ARCINDEX_FOOTER & InFo
         if(dwErrCode != ERROR_SUCCESS)
             break;
 
+        // Normalize the storage offset to the storage's FileOffsetBits.
+        // When a local (.build.info) storage is opened in online mode,
+        // FileOffsetBits is locked by the local index files and may differ
+        // from the archive index OffsetBytes.
+        if(hs->FileOffsetBits != 0 && hs->FileOffsetBits != (InFooter.OffsetBytes * 8))
+        {
+            ULONGLONG ArchiveOffset = EKeyEntry.StorageOffset & (((ULONGLONG)1 << (InFooter.OffsetBytes * 8)) - 1);
+            EKeyEntry.StorageOffset = ((ULONGLONG)nArchive << hs->FileOffsetBits) | ArchiveOffset;
+        }
+
         // Insert a new entry to the index array
         if((hs->IndexArray.Insert(&EKeyEntry, 1)) == NULL)
             return ERROR_NOT_ENOUGH_MEMORY;
@@ -782,22 +794,22 @@ static DWORD LoadArchiveIndexFiles(TCascStorage * hs)
 
 bool CopyEKeyEntry(TCascStorage * hs, PCASC_CKEY_ENTRY pCKeyEntry)
 {
-    // Don't do this on online storages
-    if(!(hs->dwFeatures & CASC_FEATURE_ONLINE))
+    LPBYTE pbEKeyEntry;
+
+    // If the file is present in local index files, mark it as available locally.
+    // This is also done for online storages: a partially downloaded local storage
+    // can serve the files it already has and download only the missing ones.
+    pbEKeyEntry = (LPBYTE)hs->IndexEKeyMap.FindObject(pCKeyEntry->EKey);
+    if(pbEKeyEntry != NULL)
     {
-        LPBYTE pbEKeyEntry;
-
-        // If the file was found, then copy the content to the CKey entry
-        pbEKeyEntry = (LPBYTE)hs->IndexEKeyMap.FindObject(pCKeyEntry->EKey);
-        if(pbEKeyEntry == NULL)
-            return false;
-
         pCKeyEntry->StorageOffset = ConvertBytesToInteger_5(pbEKeyEntry + hs->EKeyLength);
         pCKeyEntry->EncodedSize = ConvertBytesToInteger_4_LE(pbEKeyEntry + hs->EKeyLength + 5);
         pCKeyEntry->Flags |= CASC_CE_FILE_IS_LOCAL;
+        return true;
     }
 
-    return true;
+    // For online storages, the file can still be downloaded on demand
+    return (hs->dwFeatures & CASC_FEATURE_ONLINE) != 0;
 }
 
 DWORD LoadIndexFiles(TCascStorage * hs)
@@ -806,7 +818,20 @@ DWORD LoadIndexFiles(TCascStorage * hs)
     {
         case CascBuildDb:       // Load the index files from the disk
         case CascBuildInfo:
-            return LoadLocalIndexFiles(hs);
+        {
+            DWORD dwErrCode = LoadLocalIndexFiles(hs);
+
+            // On hybrid (local + online) storages, also load the archive indices.
+            // They map EKey -> archive for files that are not downloaded locally,
+            // so that FetchCascFile can retrieve the archive containing them.
+            if(hs->dwFeatures & CASC_FEATURE_ONLINE)
+            {
+                DWORD dwErrCode2 = LoadArchiveIndexFiles(hs);
+                if(dwErrCode2 == ERROR_SUCCESS)
+                    dwErrCode = ERROR_SUCCESS;
+            }
+            return dwErrCode;
+        }
 
         case CascVersions:      // Load the index files from the cache / internet
             return LoadArchiveIndexFiles(hs);
