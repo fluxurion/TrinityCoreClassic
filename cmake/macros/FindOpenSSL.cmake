@@ -245,8 +245,10 @@ if(WIN32 AND NOT CYGWIN)
     # Since OpenSSL 1.1, lib names are like libcrypto32MTd.lib and libssl32MTd.lib
     if( "${CMAKE_SIZEOF_VOID_P}" STREQUAL "8" )
         set(_OPENSSL_MSVC_ARCH_SUFFIX "64")
+        set(_OPENSSL_MSVC_ARCH_DIR "x64")
     else()
         set(_OPENSSL_MSVC_ARCH_SUFFIX "32")
+        set(_OPENSSL_MSVC_ARCH_DIR "x86")
     endif()
 
     if(OPENSSL_USE_STATIC_LIBS)
@@ -254,6 +256,7 @@ if(WIN32 AND NOT CYGWIN)
         "_static"
       )
       set(_OPENSSL_PATH_SUFFIXES
+        "lib/VC/${_OPENSSL_MSVC_ARCH_DIR}/${_OPENSSL_MSVC_RT_MODE}"
         "lib/VC/static"
         "VC/static"
         "lib"
@@ -263,11 +266,16 @@ if(WIN32 AND NOT CYGWIN)
         ""
       )
       set(_OPENSSL_PATH_SUFFIXES
+        "lib/VC/${_OPENSSL_MSVC_ARCH_DIR}/${_OPENSSL_MSVC_RT_MODE}"
         "lib/VC"
         "VC"
         "lib"
         )
     endif ()
+    set(_OPENSSL_PATH_SUFFIXES_DEBUG
+      "lib/VC/${_OPENSSL_MSVC_ARCH_DIR}/${_OPENSSL_MSVC_RT_MODE}d"
+      ${_OPENSSL_PATH_SUFFIXES}
+      )
 
     find_library(LIB_EAY_DEBUG
       NAMES
@@ -288,10 +296,16 @@ if(WIN32 AND NOT CYGWIN)
         libeay32${_OPENSSL_MSVC_RT_MODE}d
         libeay32d
         cryptod
+        # The slproweb OpenSSL 3.x installers place unsuffixed libs in the
+        # runtime-specific directories (e.g. lib/VC/x64/MDd/libcrypto.lib)
+        libcrypto${_OPENSSL_STATIC_SUFFIX}
+        libcrypto
+        libeay32
+        crypto
       NAMES_PER_DIR
       ${_OPENSSL_ROOT_HINTS_AND_PATHS}
       PATH_SUFFIXES
-        ${_OPENSSL_PATH_SUFFIXES}
+        ${_OPENSSL_PATH_SUFFIXES_DEBUG}
     )
 
     find_library(LIB_EAY_RELEASE
@@ -338,10 +352,16 @@ if(WIN32 AND NOT CYGWIN)
         ssleay32${_OPENSSL_MSVC_RT_MODE}d
         ssleay32d
         ssld
+        # The slproweb OpenSSL 3.x installers place unsuffixed libs in the
+        # runtime-specific directories (e.g. lib/VC/x64/MDd/libssl.lib)
+        libssl${_OPENSSL_STATIC_SUFFIX}
+        libssl
+        ssleay32
+        ssl
       NAMES_PER_DIR
       ${_OPENSSL_ROOT_HINTS_AND_PATHS}
       PATH_SUFFIXES
-        ${_OPENSSL_PATH_SUFFIXES}
+        ${_OPENSSL_PATH_SUFFIXES_DEBUG}
     )
 
     find_library(SSL_EAY_RELEASE
