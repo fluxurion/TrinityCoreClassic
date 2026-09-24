@@ -29,12 +29,16 @@
 #include <CascLib.h>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/operations.hpp>
+#include <algorithm>
 #include <bitset>
 #include <cstdio>
 #include <deque>
 #include <fstream>
+#include <iostream>
 #include <set>
+#include <string>
 #include <unordered_map>
+#include <vector>
 #include <cstdlib>
 #include <cstring>
 #if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
@@ -109,6 +113,7 @@ uint32 CONF_Locale = 0;
 char const* CONF_Product = "wow_classic_era";
 char const* CONF_Region = "eu";
 bool CONF_UseRemoteCasc = false;
+static bool CONF_ProductSet = false;
 
 #define CASC_LOCALES_COUNT 17
 
@@ -226,7 +231,10 @@ void HandleArgs(int argc, char* arg[])
                 break;
             case 'p':
                 if (c + 1 < argc && strlen(arg[c + 1]))      // all ok
+                {
                     CONF_Product = arg[++c];
+                    CONF_ProductSet = true;
+                }
                 else
                     Usage(arg[0]);
                 break;
@@ -249,6 +257,103 @@ void HandleArgs(int argc, char* arg[])
                 break;
         }
     }
+}
+
+// Reads the product list from .build.info and lets the user pick one
+// when -p was not passed and stdin is an interactive terminal.
+static void SelectCascProduct()
+{
+    if (CONF_ProductSet)
+        return;
+
+    static std::vector<std::pair<std::string, std::string>> products; // (product, version)
+
+    std::ifstream buildInfo((input_path / ".build.info").string());
+    if (buildInfo)
+    {
+        std::string header;
+        if (std::getline(buildInfo, header))
+        {
+            std::vector<std::string> columns;
+            for (std::size_t pos = 0; pos <= header.size();)
+            {
+                std::size_t end = header.find('|', pos);
+                columns.push_back(header.substr(pos, end - pos));
+                pos = (end == std::string::npos) ? header.size() + 1 : end + 1;
+            }
+
+            std::size_t productColumn = columns.size();
+            std::size_t versionColumn = columns.size();
+            std::size_t activeColumn = columns.size();
+            for (std::size_t i = 0; i < columns.size(); ++i)
+            {
+                if (columns[i].find("Product") == 0)
+                    productColumn = i;
+                if (columns[i].find("Version") == 0)
+                    versionColumn = i;
+                if (columns[i].find("Active") == 0)
+                    activeColumn = i;
+            }
+
+            std::string line;
+            while (std::getline(buildInfo, line))
+            {
+                std::vector<std::string> fields;
+                for (std::size_t pos = 0; pos <= line.size();)
+                {
+                    std::size_t end = line.find('|', pos);
+                    fields.push_back(line.substr(pos, end - pos));
+                    pos = (end == std::string::npos) ? line.size() + 1 : end + 1;
+                }
+
+                if (productColumn >= fields.size())
+                    continue;
+
+                if (activeColumn < fields.size() && fields[activeColumn] != "1")
+                    continue;
+
+                std::string const& product = fields[productColumn];
+                if (product.empty())
+                    continue;
+
+                std::string const& version = versionColumn < fields.size() ? fields[versionColumn] : product;
+                auto itr = std::find_if(products.begin(), products.end(),
+                    [&](auto const& p) { return p.first == product; });
+                if (itr == products.end())
+                    products.emplace_back(product, version);
+            }
+        }
+    }
+
+    if (products.empty())
+        return;
+
+    std::size_t defaultIndex = 0;
+    for (std::size_t i = 0; i < products.size(); ++i)
+        if (products[i].first == CONF_Product)
+            defaultIndex = i;
+
+    if (!isatty(fileno(stdin)))
+    {
+        CONF_Product = products[defaultIndex].first.c_str();
+        return;
+    }
+
+    printf("Available products:\n");
+    for (std::size_t i = 0; i < products.size(); ++i)
+        printf("  [%u] %s (%s)%s\n", uint32(i + 1), products[i].first.c_str(), products[i].second.c_str(),
+            i == defaultIndex ? " <- default" : "");
+    printf("Select product to extract [default %u]: ", uint32(defaultIndex + 1));
+
+    char choice[16];
+    if (!fgets(choice, sizeof(choice), stdin))
+        return;
+
+    int selected = atoi(choice);
+    if (selected < 1 || selected > int(products.size()))
+        selected = int(defaultIndex) + 1;
+
+    CONF_Product = products[selected - 1].first.c_str();
 }
 
 void TryLoadDB2(char const* name, DB2CascFileSource* source, DB2FileLoader* db2, DB2FileLoadInfo const* loadInfo)
@@ -1487,6 +1592,7 @@ int main(int argc, char * arg[])
     output_path = boost::filesystem::current_path();
 
     HandleArgs(argc, arg);
+    SelectCascProduct();
 
     if (!RetardCheck())
         return 1;

@@ -396,7 +396,7 @@ void BattlegroundMgr::LoadBattlegroundTemplates()
         }
 
         std::vector<int32> mapIds;
-        for (auto mapId : bl->MapID)
+        for (int32 mapId : sDB2Manager.GetMapIdsForBattlemaster(bgTypeId))
             if (mapId > -1)
                 mapIds.push_back(mapId);
 

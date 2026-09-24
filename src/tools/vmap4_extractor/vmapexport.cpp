@@ -38,6 +38,11 @@
 #include <cstdio>
 #include <cerrno>
 #include <sys/stat.h>
+#if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 #ifdef _WIN32
     #include <direct.h>
@@ -62,6 +67,7 @@ boost::filesystem::path input_path;
 bool preciseVectorData = false;
 char const* CascProduct = "wow_classic_era";
 char const* CascRegion = "eu";
+static bool CascProductSet = false;
 bool UseRemoteCasc = false;
 uint32 DbcLocale = 0;
 std::unordered_map<std::string, WMODoodadData> WmoDoodads;
@@ -363,7 +369,10 @@ bool processArgv(int argc, char ** argv, const char *versionString)
         else if (strcmp("-p", argv[i]) == 0)
         {
             if (i + 1 < argc && strlen(argv[i + 1]))
+            {
                 CascProduct = argv[++i];
+                CascProductSet = true;
+            }
             else
                 result = false;
         }
@@ -414,6 +423,103 @@ bool processArgv(int argc, char ** argv, const char *versionString)
     return result;
 }
 
+// Reads the product list from .build.info and lets the user pick one
+// when -p was not passed and stdin is an interactive terminal.
+static void SelectCascProduct()
+{
+    if (CascProductSet)
+        return;
+
+    static std::vector<std::pair<std::string, std::string>> products; // (product, version)
+
+    std::ifstream buildInfo((input_path / ".build.info").string());
+    if (buildInfo)
+    {
+        std::string header;
+        if (std::getline(buildInfo, header))
+        {
+            std::vector<std::string> columns;
+            for (std::size_t pos = 0; pos <= header.size();)
+            {
+                std::size_t end = header.find('|', pos);
+                columns.push_back(header.substr(pos, end - pos));
+                pos = (end == std::string::npos) ? header.size() + 1 : end + 1;
+            }
+
+            std::size_t productColumn = columns.size();
+            std::size_t versionColumn = columns.size();
+            std::size_t activeColumn = columns.size();
+            for (std::size_t i = 0; i < columns.size(); ++i)
+            {
+                if (columns[i].find("Product") == 0)
+                    productColumn = i;
+                if (columns[i].find("Version") == 0)
+                    versionColumn = i;
+                if (columns[i].find("Active") == 0)
+                    activeColumn = i;
+            }
+
+            std::string line;
+            while (std::getline(buildInfo, line))
+            {
+                std::vector<std::string> fields;
+                for (std::size_t pos = 0; pos <= line.size();)
+                {
+                    std::size_t end = line.find('|', pos);
+                    fields.push_back(line.substr(pos, end - pos));
+                    pos = (end == std::string::npos) ? line.size() + 1 : end + 1;
+                }
+
+                if (productColumn >= fields.size())
+                    continue;
+
+                if (activeColumn < fields.size() && fields[activeColumn] != "1")
+                    continue;
+
+                std::string const& product = fields[productColumn];
+                if (product.empty())
+                    continue;
+
+                std::string const& version = versionColumn < fields.size() ? fields[versionColumn] : product;
+                auto itr = std::find_if(products.begin(), products.end(),
+                    [&](auto const& p) { return p.first == product; });
+                if (itr == products.end())
+                    products.emplace_back(product, version);
+            }
+        }
+    }
+
+    if (products.empty())
+        return;
+
+    std::size_t defaultIndex = 0;
+    for (std::size_t i = 0; i < products.size(); ++i)
+        if (products[i].first == CascProduct)
+            defaultIndex = i;
+
+    if (!isatty(fileno(stdin)))
+    {
+        CascProduct = products[defaultIndex].first.c_str();
+        return;
+    }
+
+    printf("Available products:\n");
+    for (std::size_t i = 0; i < products.size(); ++i)
+        printf("  [%u] %s (%s)%s\n", uint32(i + 1), products[i].first.c_str(), products[i].second.c_str(),
+            i == defaultIndex ? " <- default" : "");
+    printf("Select product to extract [default %u]: ", uint32(defaultIndex + 1));
+
+    char choice[16];
+    if (!fgets(choice, sizeof(choice), stdin))
+        return;
+
+    int selected = atoi(choice);
+    if (selected < 1 || selected > int(products.size()))
+        selected = int(defaultIndex) + 1;
+
+    CascProduct = products[selected - 1].first.c_str();
+}
+
 static bool RetardCheck()
 {
     try
@@ -455,6 +561,11 @@ int main(int argc, char ** argv)
     // Use command line arguments, when some
     if (!processArgv(argc, argv, VMAP::VMAP_MAGIC))
         return 1;
+
+    if (input_path.empty())
+        input_path = boost::filesystem::current_path();
+
+    SelectCascProduct();
 
     if (!RetardCheck())
         return 1;

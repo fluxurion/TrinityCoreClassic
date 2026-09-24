@@ -62,6 +62,7 @@ DB2Storage<BattlePetBreedStateEntry>            sBattlePetBreedStateStore("Battl
 DB2Storage<BattlePetSpeciesEntry>               sBattlePetSpeciesStore("BattlePetSpecies.db2", BattlePetSpeciesLoadInfo::Instance());
 DB2Storage<BattlePetSpeciesStateEntry>          sBattlePetSpeciesStateStore("BattlePetSpeciesState.db2", BattlePetSpeciesStateLoadInfo::Instance());
 DB2Storage<BattlemasterListEntry>               sBattlemasterListStore("BattlemasterList.db2", BattlemasterListLoadInfo::Instance());
+DB2Storage<BattlemasterListXMapEntry>           sBattlemasterListXMapStore("Battlemasterlistxmap.db2", BattlemasterListXMapLoadInfo::Instance());
 DB2Storage<BroadcastTextEntry>                  sBroadcastTextStore("BroadcastText.db2", BroadcastTextLoadInfo::Instance());
 DB2Storage<Cfg_CategoriesEntry>                 sCfgCategoriesStore("Cfg_Categories.db2", CfgCategoriesLoadInfo::Instance());
 DB2Storage<Cfg_RegionsEntry>                    sCfgRegionsStore("Cfg_Regions.db2", CfgRegionsLoadInfo::Instance());
@@ -316,6 +317,7 @@ struct ItemLevelSelectorQualityEntryComparator
 
 typedef std::map<uint32 /*hash*/, DB2StorageBase*> StorageMap;
 typedef std::unordered_map<uint32 /*areaGroupId*/, std::vector<uint32/*areaId*/>> AreaGroupMemberContainer;
+typedef std::unordered_map<uint32 /*battlemasterListId*/, std::vector<int32/*mapId*/>> BattlemasterListXMapContainer;
 typedef ChrSpecializationEntry const* ChrSpecializationByIndexContainer[MAX_CLASSES + 1][MAX_SPECIALIZATIONS];
 typedef std::unordered_map<uint32 /*curveID*/, std::vector<CurvePointEntry const*>> CurvePointsContainer;
 typedef std::map<std::tuple<uint32, uint8, uint8, uint8>, EmotesTextSoundEntry const*> EmotesTextSoundContainer;
@@ -371,6 +373,7 @@ namespace
     std::array<std::map<HotfixBlobKey, std::vector<DB2Manager::HotfixOptionalData>>, TOTAL_LOCALES> _hotfixOptionalData;
 
     AreaGroupMemberContainer _areaGroupMembers;
+    BattlemasterListXMapContainer _battlemasterListMaps;
     std::array<ChrClassUIDisplayEntry const*, MAX_CLASSES> _uiDisplayByClass;
     std::array<std::array<uint32, MAX_POWERS>, MAX_CLASSES> _powersByClass;
     std::unordered_map<uint32 /*chrCustomizationOptionId*/, std::vector<ChrCustomizationChoiceEntry const*>> _chrCustomizationChoicesByOption;
@@ -580,6 +583,7 @@ uint32 DB2Manager::LoadStores(std::string const& dataPath, LocaleConstant defaul
     //LOAD_DB2(sBattlePetSpeciesStore);
     //LOAD_DB2(sBattlePetSpeciesStateStore);
     LOAD_DB2(sBattlemasterListStore);
+    LOAD_DB2(sBattlemasterListXMapStore);
     LOAD_DB2(sBroadcastTextStore);
     LOAD_DB2(sCfgCategoriesStore);
     LOAD_DB2(sCfgRegionsStore);
@@ -864,6 +868,9 @@ void DB2Manager::IndexLoadedStores()
         ASSERT(areaTable->AreaBit <= 0 || (size_t(areaTable->AreaBit / 64) < PLAYER_EXPLORED_ZONES_SIZE),
             "PLAYER_EXPLORED_ZONES_SIZE must be at least %d", (areaTable->AreaBit + 63) / 64);
     }
+
+    for (BattlemasterListXMapEntry const* battlemasterListMap : sBattlemasterListXMapStore)
+        _battlemasterListMaps[battlemasterListMap->BattlemasterListID].push_back(battlemasterListMap->MapID);
 
     for (BattlemasterListEntry const* battlemaster : sBattlemasterListStore)
     {
@@ -1676,6 +1683,15 @@ std::vector<uint32> DB2Manager::GetAreasForGroup(uint32 areaGroupId) const
         return itr->second;
 
     return std::vector<uint32>();
+}
+
+std::vector<int32> DB2Manager::GetMapIdsForBattlemaster(uint32 battlemasterListId) const
+{
+    auto itr = _battlemasterListMaps.find(battlemasterListId);
+    if (itr != _battlemasterListMaps.end())
+        return itr->second;
+
+    return std::vector<int32>();
 }
 
 bool DB2Manager::IsInArea(uint32 objectAreaId, uint32 areaId)
