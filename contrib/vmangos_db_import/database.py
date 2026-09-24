@@ -7,7 +7,7 @@ class DbInstance:
         self._connection = mysql.connector.connect(
             host='localhost',
             user='root',
-            password='root',
+            password='ascent',
             database=db_name
         )
         self._cursor = self._connection.cursor(buffered=True)
@@ -105,9 +105,9 @@ tri_hotfix = DbInstance()
 vm_world = DbInstance()
 
 def OpenAll():
-    tri_world.open('trinity_world')
-    tri_hotfix.open('trinity_hotfixes')
-    vm_world.open('vmangos_mangos')
+    tri_world.open('classic_world')
+    tri_hotfix.open('classic_hotfixes')
+    vm_world.open('vmangos')
 
     
 def CloseAll():
@@ -228,9 +228,9 @@ class UpsertQuery:
         sql = ""
         
         if self._condition != None:
-            sql = "UPDATE " + self._table + " SET "            
+            sql = "UPDATE " + self._table + " SET "
             sql += ', '.join(
-                map(lambda key: key + " = %s", self._values.keys())
+                map(lambda key: "`" + key.strip('`') + "` = %s", self._values.keys())
             )
             
             args += self._values.values()
@@ -239,7 +239,7 @@ class UpsertQuery:
             args += inner['args']
         else:
             sql = "INSERT INTO " + self._table + " ("
-            sql += ', '.join(self._values.keys())
+            sql += ', '.join(map(lambda key: "`" + key.strip('`') + "`", self._values.keys()))
             sql += ") VALUES ("
             sql += ', '.join(['%s'] * len(self._values))
             sql += ")"
@@ -300,22 +300,24 @@ class Condition:
         self._value = value
         
     def build_sql(self):
-        
+
+        field = '.'.join(map(lambda part: "`" + part.strip('`') + "`", self._field.split('.')))
+
         if isinstance(self._value, list):
             if (self._op == "IN" or self._op == "NOT IN") :
                 placeholder = ', '.join(['%s'] * len(self._value))
                 return {
-                    'sql': "(" + self._field + " " + self._op + " (" + placeholder +"))",
-                    'args': self._value
-                } 
-            elif self._op == 'BETWEEN':
-                return {
-                    'sql': "(" + self._field + " BETWEEN %s AND %s)",
+                    'sql': "(" + field + " " + self._op + " (" + placeholder +"))",
                     'args': self._value
                 }
-        
+            elif self._op == 'BETWEEN':
+                return {
+                    'sql': "(" + field + " BETWEEN %s AND %s)",
+                    'args': self._value
+                }
+
         return {
-            'sql': "(" + self._field + " " + self._op + " %s)",
+            'sql': "(" + field + " " + self._op + " %s)",
             'args': [self._value]
         }
         

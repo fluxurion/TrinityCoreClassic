@@ -430,16 +430,16 @@ def _upsert_creature_template(vm_row, tri_row = None) :
     
     
     existing_tc_addon = db.tri_world.select_one(
-        db.SelectQuery("creature_template_addon").where('entry', "=", tri_row['entry'])
+        db.SelectQuery("creature_template_addon").where('entry', "=", vm_row['entry'])
     )
-    
+
     if existing_tc_addon != None:
         #vmangos seems to assume these always set for creatures (SHEATH_STATE_MELEE, UNIT_BYTE2_FLAG_AURAS), see Creature::UpdateEntry
-        addon_bytes_2 = (0x1 << 0) + (0x10 << 8) 
+        addon_bytes_2 = (0x1 << 0) + (0x10 << 8)
         addon_bytes_2 = addon_bytes_2 | existing_tc_addon['bytes2']
         creature_template_addon_upsert = db.UpsertQuery("creature_template_addon").values({
             'bytes2': addon_bytes_2
-        }).where('entry', "=", tri_row['entry'])
+        }).where('entry', "=", vm_row['entry'])
 
         db.tri_world.upsert(creature_template_addon_upsert)
     
@@ -485,15 +485,24 @@ def _upsert_creature_template(vm_row, tri_row = None) :
     
     db.tri_world.execute_raw("DELETE FROM creature_template_spell WHERE CreatureID = %s", (vm_row['entry'],))
     
+    spell_ids = []
+    if 'spell_id1' in vm_row:
+        spell_ids = [vm_row['spell_id'+str(i)] for i in range(1, 4+1)]
+    elif vm_row.get('spell_list_id'):
+        vm_spell_list = db.vm_world.select_one(
+            db.SelectQuery("creature_spells").where("entry", "=", vm_row['spell_list_id'])
+        )
+        if vm_spell_list:
+            spell_ids = [vm_spell_list['spellId_'+str(i)] for i in range(1, 8+1)]
+
     spell_index = 0
-    for i in range(1, 4+1):
-        field_name = 'spell_id'+str(i)
-        if(vm_row[field_name] > 0):
+    for spell_id in spell_ids:
+        if(spell_id > 0):
             db.tri_world.upsert(
                 db.UpsertQuery("creature_template_spell").values({
                     'CreatureID': vm_row['entry'],
                     '`Index`': spell_index,
-                    'Spell': vm_row[field_name],
+                    'Spell': spell_id,
                     'VerifiedBuild': constants.TargetBuild
                 })
             )

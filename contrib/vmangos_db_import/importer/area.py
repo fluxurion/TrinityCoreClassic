@@ -54,7 +54,7 @@ def handle_teleports():
             "SELECT * FROM areatrigger_teleport WHERE ID = %s ORDER BY patch DESC LIMIT 1", 
             (row[0],)
         )
-        if vm_row != None:
+        if vm_row == None:
             db.tri_world.execute_raw("DELETE FROM areatrigger_teleport WHERE ID = %s", (row[0],))
             teleports['deleted'] += 1
         else:
