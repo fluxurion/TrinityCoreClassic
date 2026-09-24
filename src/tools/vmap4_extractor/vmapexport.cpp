@@ -60,7 +60,7 @@ std::vector<MapEntry> map_ids; // partitioned by parent maps first
 std::unordered_set<uint32> maps_that_are_parents;
 boost::filesystem::path input_path;
 bool preciseVectorData = false;
-char const* CascProduct = "wow_classic_beta";
+char const* CascProduct = "wow_classic_era";
 char const* CascRegion = "eu";
 bool UseRemoteCasc = false;
 uint32 DbcLocale = 0;
@@ -404,7 +404,7 @@ bool processArgv(int argc, char ** argv, const char *versionString)
         printf("   -s  : (default) small size (data size optimization), ~500MB less vmap data.\n");
         printf("   -l  : large size, ~500MB more vmap data. (might contain more details)\n");
         printf("   -d  <path>: Path to the vector data source folder.\n");
-        printf("   -p  <product>: which installed product to open (wow/wowt/wow_beta/wow_classic_beta)\n");
+        printf("   -p  <product>: which installed product to open (wow/wowt/wow_beta/wow_classic_era, default: wow_classic_era)\n");
         printf("   -c  use remote casc\n");
         printf("   -r  set remote casc region - standard: eu\n");
         printf("   -dl dbc locale\n");

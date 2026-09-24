@@ -106,7 +106,7 @@ float CONF_flat_liquid_delta_limit = 0.001f; // If max - min less this value - l
 
 uint32 CONF_Locale = 0;
 
-char const* CONF_Product = "wow_classic_beta";
+char const* CONF_Product = "wow_classic_era";
 char const* CONF_Region = "eu";
 bool CONF_UseRemoteCasc = false;
 
@@ -161,7 +161,7 @@ void Usage(char const* prg)
         "-e extract only MAP(1)/DBC(2)/Camera(4)/gt(8) - standard: all(15)\n"\
         "-f height stored as int (less map size but lost some accuracy) 1 by default\n"\
         "-l dbc locale\n"\
-        "-p which installed product to open (wow/wowt/wow_beta/wow_classic_beta)\n"\
+        "-p which installed product to open (wow/wowt/wow_beta/wow_classic_era, default: wow_classic_era)\n"\
         "-c use remote casc\n"\
         "-r set remote casc region - standard: eu\n"\
         "Example: %s -f 0 -i \"c:\\games\\game\"\n", prg, prg);
