@@ -56,6 +56,7 @@ struct GameobjectDisplayInfoLoadInfo
         static DB2FieldMeta const loadedFields[] =
         {
             { false, FT_INT, "ID" },
+            { false, FT_STRING_NOT_LOCALIZED, "ModelName" },
             { false, FT_FLOAT, "GeoBoxMinX" },
             { false, FT_FLOAT, "GeoBoxMinY" },
             { false, FT_FLOAT, "GeoBoxMinZ" },
@@ -66,24 +67,19 @@ struct GameobjectDisplayInfoLoadInfo
             { true, FT_SHORT, "ObjectEffectPackageID" },
             { false, FT_FLOAT, "OverrideLootEffectScale" },
             { false, FT_FLOAT, "OverrideNameScale" },
-            { true, FT_INT, "AlternateDisplayType" },
-            { true, FT_INT, "ClientCreatureDisplayInfoID" },
-            { true, FT_INT, "ClientItemID" },
-            { false, FT_SHORT, "Field_11_0_0_54210_008" },
+            { false, FT_SHORT, "Field_1_15_4_56400_006" },
         };
-        static DB2MetaField const fields[9] =
+        static DB2MetaField const fields[7] =
         {
+            { FT_STRING_NOT_LOCALIZED, 1, true },
             { FT_FLOAT, 6, true },
             { FT_INT, 1, true },
             { FT_SHORT, 1, true },
             { FT_FLOAT, 1, true },
             { FT_FLOAT, 1, true },
-            { FT_INT, 1, true },
-            { FT_INT, 1, true },
-            { FT_INT, 1, true },
             { FT_SHORT, 1, false },
         };
-        static DB2Meta meta(1266277, -1, 9, 9, 0x16D1DD61, fields, -1);
+        static DB2Meta meta(1266277, -1, 7, 7, 0x7C5F0B90, fields, -1);
         static DB2FileLoadInfo const loadInfo(&loadedFields[0], std::extent<decltype(loadedFields)>::value, &meta);
         return &loadInfo;
     }
