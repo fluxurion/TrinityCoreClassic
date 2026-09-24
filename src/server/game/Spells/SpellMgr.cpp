@@ -2541,11 +2541,16 @@ void SpellMgr::LoadSpellInfoStore()
 
     for (SpellEffectEntry const* effect : sSpellEffectStore)
     {
-        ASSERT(effect->EffectIndex < MAX_SPELL_EFFECTS, "MAX_SPELL_EFFECTS must be at least %d", effect->EffectIndex + 1);
-        ASSERT(effect->Effect < TOTAL_SPELL_EFFECTS, "TOTAL_SPELL_EFFECTS must be at least %u", effect->Effect + 1);
-        ASSERT(effect->EffectAura < int32(TOTAL_AURAS), "TOTAL_AURAS must be at least %d", effect->EffectAura + 1);
-        ASSERT(effect->ImplicitTarget[0] < TOTAL_SPELL_TARGETS, "TOTAL_SPELL_TARGETS must be at least %u", effect->ImplicitTarget[0] + 1);
-        ASSERT(effect->ImplicitTarget[1] < TOTAL_SPELL_TARGETS, "TOTAL_SPELL_TARGETS must be at least %u", effect->ImplicitTarget[1] + 1);
+        if (effect->EffectIndex >= int32(MAX_SPELL_EFFECTS)
+            || effect->Effect >= int32(TOTAL_SPELL_EFFECTS)
+            || effect->EffectAura >= int32(TOTAL_AURAS)
+            || effect->ImplicitTarget[0] >= int32(TOTAL_SPELL_TARGETS)
+            || effect->ImplicitTarget[1] >= int32(TOTAL_SPELL_TARGETS))
+        {
+            TC_LOG_ERROR("sql.sql", "SpellEffect entry {} has out of range values (EffectIndex {}, Effect {}, EffectAura {}, Targets {}/{}), skipped.",
+                effect->ID, effect->EffectIndex, effect->Effect, effect->EffectAura, effect->ImplicitTarget[0], effect->ImplicitTarget[1]);
+            continue;
+        }
 
         loadData[{ effect->SpellID, Difficulty(effect->DifficultyID) }].Effects[effect->EffectIndex] = effect;
 

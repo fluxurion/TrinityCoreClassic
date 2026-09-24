@@ -837,7 +837,7 @@ uint32 DB2Manager::LoadStores(std::string const& dataPath, LocaleConstant defaul
 
     static_assert(CURRENT_EXPANSION <= EXPANSION_WRATH_OF_THE_LICH_KING, "Unsupported expansion.");
     if constexpr (CURRENT_EXPANSION == EXPANSION_CLASSIC) {
-        db2_contents_error = max_map_id != 533;
+        db2_contents_error = max_map_id < 533;
     }
     else if constexpr (CURRENT_EXPANSION == EXPANSION_THE_BURNING_CRUSADE) {
         db2_contents_error = max_map_id != 598;
@@ -1173,7 +1173,11 @@ void DB2Manager::IndexLoadedStores()
 
     for (PowerTypeEntry const* powerType : sPowerTypeStore)
     {
-        ASSERT(powerType->PowerTypeEnum < MAX_POWERS);
+        if (powerType->PowerTypeEnum < 0 || powerType->PowerTypeEnum >= MAX_POWERS)
+        {
+            TC_LOG_ERROR("db2.hotfix.power_type", "PowerType {} has out of range PowerTypeEnum {}, skipped.", powerType->ID, powerType->PowerTypeEnum);
+            continue;
+        }
         ASSERT(!_powerTypes[powerType->PowerTypeEnum]);
 
         _powerTypes[powerType->PowerTypeEnum] = powerType;
@@ -1280,19 +1284,27 @@ void DB2Manager::IndexLoadedStores()
     uint32 pathCount = sTaxiPathStore.GetNumRows();
 
     // Calculate path nodes count
+    uint32 maxPathId = pathCount;
+    for (TaxiPathNodeEntry const* entry : sTaxiPathNodeStore)
+        maxPathId = std::max(maxPathId, entry->PathID + 1u);
+
     std::vector<uint32> pathLength;
-    pathLength.resize(pathCount);                           // 0 and some other indexes not used
+    pathLength.resize(maxPathId);                           // 0 and some other indexes not used
     for (TaxiPathNodeEntry const* entry : sTaxiPathNodeStore)
         pathLength[entry->PathID] = std::max(pathLength[entry->PathID], entry->NodeIndex + 1u);
 
     // Set path length
-    sTaxiPathNodesByPath.resize(pathCount);                 // 0 and some other indexes not used
+    sTaxiPathNodesByPath.resize(maxPathId);                 // 0 and some other indexes not used
     for (uint32 i = 0; i < sTaxiPathNodesByPath.size(); ++i)
         sTaxiPathNodesByPath[i].resize(pathLength[i]);
 
     // fill data
     for (TaxiPathNodeEntry const* entry : sTaxiPathNodeStore)
         sTaxiPathNodesByPath[entry->PathID][entry->NodeIndex] = entry;
+
+    // Remove holes left by sparse NodeIndex values so consumers don't see null nodes
+    for (TaxiPathNodeList& nodes : sTaxiPathNodesByPath)
+        nodes.erase(std::remove(nodes.begin(), nodes.end(), nullptr), nodes.end());
 
     for (ToyEntry const* toy : sToyStore)
         _toys.insert(toy->ItemID);
