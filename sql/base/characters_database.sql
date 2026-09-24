@@ -1052,8 +1052,13 @@ DROP TABLE IF EXISTS `character_glyphs`;
 CREATE TABLE `character_glyphs` (
   `guid` bigint unsigned NOT NULL,
   `talentGroup` tinyint unsigned NOT NULL DEFAULT '0',
-  `glyphId` smallint unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`guid`,`talentGroup`,`glyphId`)
+  `glyph1` smallint unsigned NOT NULL DEFAULT '0',
+  `glyph2` smallint unsigned NOT NULL DEFAULT '0',
+  `glyph3` smallint unsigned NOT NULL DEFAULT '0',
+  `glyph4` smallint unsigned NOT NULL DEFAULT '0',
+  `glyph5` smallint unsigned NOT NULL DEFAULT '0',
+  `glyph6` smallint unsigned NOT NULL DEFAULT '0',
+  PRIMARY KEY (`guid`,`talentGroup`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -1795,6 +1800,9 @@ CREATE TABLE `character_void_storage` (
   `itemEntry` int unsigned NOT NULL,
   `slot` tinyint unsigned NOT NULL,
   `creatorGuid` bigint unsigned NOT NULL DEFAULT '0',
+  `randomPropertyType` tinyint unsigned NOT NULL DEFAULT '0',
+  `randomProperty` int NOT NULL DEFAULT '0',
+  `suffixFactor` int unsigned NOT NULL DEFAULT '0',
   `randomBonusListId` int unsigned NOT NULL DEFAULT '0',
   `fixedScalingLevel` int unsigned DEFAULT '0',
   `artifactKnowledgeLevel` int unsigned DEFAULT '0',
